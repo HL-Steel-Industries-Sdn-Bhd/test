@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>工人扫码 - Angelina</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    h2 { color: #2c3e50; }
+    #reader { margin: 20px auto; width: 300px; }
+    #result { margin-top: 10px; color: green; }
+  </style>
+</head>
+<body>
+  <h2>Welcome Angelina (A0001)</h2>
+  <p>请扫描图纸上的 QR Code</p>
+  <div id="reader"></div>
+  <div id="result"></div>
+
+  <script>
+    function onScanSuccess(decodedText, decodedResult) {
+      // 扫描结果显示在页面上
+      document.getElementById("result").innerText = "扫描到 QR 内容: " + decodedText;
+      console.log("扫描结果:", decodedText);
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", { fps: 10, qrbox: 250 }
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
+</body>
+</html>

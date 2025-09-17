@@ -8,35 +8,41 @@
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
     h2 { color: #2c3e50; }
     #reader { margin: 20px auto; width: 300px; }
-    #result { margin-top: 10px; color: green; word-break: break-all; }
   </style>
 </head>
 <body>
   <h2>Welcome Angelina (A0001)</h2>
   <p>请扫描图纸上的 QR Code</p>
   <div id="reader"></div>
-  <div id="result"></div>
 
   <script>
-    function onScanSuccess(decodedText, decodedResult) {
-      // 显示扫描内容
-      document.getElementById("result").innerText = "扫描到 QR 内容: " + decodedText;
-      console.log("扫描结果:", decodedText);
+    const html5QrCode = new Html5Qrcode("reader");
 
-      // 如果扫描内容是 URL，则自动跳转
-      if (decodedText.startsWith("http://") || decodedText.startsWith("https://")) {
-        // 延迟0.5秒跳转，让用户看到扫描结果
-        setTimeout(() => {
-          window.location.href = decodedText;
-        }, 500);
-      }
+    function startScanning() {
+      html5QrCode.start(
+        { facingMode: "environment" }, // 使用后置摄像头
+        { fps: 10, qrbox: 250 },
+        (decodedText, decodedResult) => {
+          console.log("扫描结果:", decodedText);
+
+          // 扫到 URL 自动跳转
+          if (decodedText.startsWith("http://") || decodedText.startsWith("https://")) {
+            html5QrCode.stop().then(() => {
+              window.location.href = decodedText;
+            });
+          }
+        },
+        (errorMessage) => {
+          // 可以忽略扫描失败
+        }
+      ).catch(err => {
+        console.error("扫描启动失败:", err);
+      });
     }
 
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", { fps: 10, qrbox: 250 }
-    );
-    html5QrcodeScanner.render(onScanSuccess);
+    startScanning();
   </script>
 </body>
 </html>
+
 

@@ -157,7 +157,7 @@
           fps: 25, // 高帧率
           qrbox: function(viewfinderWidth, viewfinderHeight) {
             let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: minEdge * 0.9, height: minEdge * 0.9 }; // 大扫描框，保持可视化
+            return { width: minEdge * 0.6, height: minEdge * 0.6 }; // 保留可视化扫描框
           }
         },
         (decodedText) => handleScan(decodedText),
@@ -181,6 +181,7 @@
   </script>
 </body>
 </html>
+
 
 
 

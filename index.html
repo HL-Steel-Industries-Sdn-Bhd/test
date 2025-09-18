@@ -54,24 +54,31 @@
   <script>
     const SPECIAL_URL = "https://hl-steel-industries-sdn-bhd.github.io/Test/";
     let lastScanned = "";
-
-    // 手机摄像头扫码
     const html5QrCode = new Html5Qrcode("reader");
 
-    function handleScan(text) {
+    // 统一处理扫码结果
+    function handleScan(text, fromCamera = false) {
       if (text === SPECIAL_URL && lastScanned === SPECIAL_URL) {
         document.getElementById("warningMsg").style.display = "block";
+        if (fromCamera) html5QrCode.stop(); // 停止相机扫描，避免无限循环
         return;
       }
       lastScanned = text;
 
       if (text.startsWith("http://") || text.startsWith("https://")) {
-        window.location.href = text;
+        if (fromCamera) {
+          html5QrCode.stop().then(() => {
+            window.location.href = text;
+          });
+        } else {
+          window.location.href = text;
+        }
       } else {
         alert("无效的 QR 内容: " + text);
       }
     }
 
+    // 手机摄像头扫码
     function startScanning() {
       html5QrCode.start(
         { facingMode: "environment" },
@@ -82,7 +89,7 @@
             return { width: minEdge * 0.8, height: minEdge * 0.8 };
           }
         },
-        (decodedText) => handleScan(decodedText),
+        (decodedText) => handleScan(decodedText, true),
         () => {}
       ).catch(err => {
         console.error("扫描启动失败:", err);
@@ -102,7 +109,7 @@
     input.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         const text = input.value.trim();
-        handleScan(text);
+        handleScan(text, false);
         input.value = ""; // 清空，方便下一次扫
       }
     });

@@ -56,41 +56,70 @@
     const warning = document.getElementById("warningMsg");
 
     const html5QrCode = new Html5Qrcode("reader");
+    let scanningLocked = false; // 一旦为 true，就忽略所有后续解码，避免 race / 重复触发
 
     // 统一处理扫码结果
-    function handleScan(text, fromCamera = false) {
+    async function handleScan(rawText, fromCamera = false) {
+      if (!rawText) return;
+      const text = String(rawText).trim();
+
+      // 如果已经上锁，直接忽略
+      if (scanningLocked) return;
+
+      // 如果是被阻止的 URL —— 永远不跳转，只提示并停止相机
       if (text === BLOCKED_URL) {
+        scanningLocked = true;
         warning.style.display = "block";
-        return; // 永远不跳转
+
+        // 尝试优雅停止并清除相机（防止后续帧继续触发）
+        try {
+          await html5QrCode.stop();
+        } catch (e) {
+          // stop 可能会拒绝或抛错误，尝试 clear
+        }
+        try { html5QrCode.clear(); } catch (e) {}
+        return;
       }
 
-      // 其他链接：跳转
+      // 普通 URL：跳转（相机场景先停止再跳）
       if (text.startsWith("http://") || text.startsWith("https://")) {
+        scanningLocked = true; // 上锁，保证只触发一次跳转
         if (fromCamera) {
-          html5QrCode.stop().then(() => {
-            window.location.href = text;
-          });
+          try {
+            await html5QrCode.stop();
+          } catch (e) {
+            // ignore
+          }
+          try { html5QrCode.clear(); } catch (e) {}
+          // 最后再跳
+          window.location.href = text;
         } else {
+          // 扫码枪直接跳
           window.location.href = text;
         }
-      } else {
-        alert("无效的 QR 内容: " + text);
+        return;
       }
+
+      // 非 URL 内容
+      alert("无效的 QR 内容: " + text);
     }
 
-    // 手机摄像头扫码
+    // 启动摄像头扫码
     function startScanning() {
+      // 如果前面已经上锁（例如页面刚加载时因为某些行为），不再启动
+      if (scanningLocked) return;
+
       html5QrCode.start(
         { facingMode: "environment" },
         {
           fps: 10,
           qrbox: function(viewfinderWidth, viewfinderHeight) {
             let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: minEdge * 0.8, height: minEdge * 0.8 };
+            return { width: Math.floor(minEdge * 0.8), height: Math.floor(minEdge * 0.8) };
           }
         },
         (decodedText) => handleScan(decodedText, true),
-        () => {}
+        (error) => { /* ignore decode failures */ }
       ).catch(err => {
         console.error("扫描启动失败:", err);
       });
@@ -101,16 +130,17 @@
     const input = document.getElementById("scannerInput");
     input.focus();
 
-    // 如果失去焦点，自动再聚焦
+    // 失焦自动回聚焦（保持扫码枪输入时不需要点）
     input.addEventListener("blur", () => {
       setTimeout(() => input.focus(), 100);
     });
 
+    // 回车后处理
     input.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         const text = input.value.trim();
+        input.value = ""; // 立即清空，避免重复触发
         handleScan(text, false);
-        input.value = ""; // 清空，方便下一次扫
       }
     });
   </script>

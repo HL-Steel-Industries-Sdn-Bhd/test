@@ -52,26 +52,19 @@
   <div id="warningMsg">Bro,冷静! 不要一直重复扫描自己的QR Code。</div>
 
   <script>
-    const SPECIAL_URL = "https://hl-steel-industries-sdn-bhd.github.io/Test/";
-    let lastTestScanTime = 0; // 上一次扫 Test 的时间戳
+    const BLOCKED_URL = "https://hl-steel-industries-sdn-bhd.github.io/Test/";
     const warning = document.getElementById("warningMsg");
 
     const html5QrCode = new Html5Qrcode("reader");
 
     // 统一处理扫码结果
     function handleScan(text, fromCamera = false) {
-      const now = Date.now();
-
-      if (text === SPECIAL_URL) {
-        if (now - lastTestScanTime > 30000) {  // 30秒冷却
-          warning.style.display = "block";
-          lastTestScanTime = now;
-        }
-        // 不跳转
-        return;
+      if (text === BLOCKED_URL) {
+        warning.style.display = "block";
+        return; // 永远不跳转
       }
 
-      // 正常链接：跳转
+      // 其他链接：跳转
       if (text.startsWith("http://") || text.startsWith("https://")) {
         if (fromCamera) {
           html5QrCode.stop().then(() => {
@@ -123,6 +116,7 @@
   </script>
 </body>
 </html>
+
 
 
 

@@ -52,74 +52,45 @@
   <div id="warningMsg">Bro,冷静! 不要一直重复扫描自己的QR Code。</div>
 
   <script>
-    const BLOCKED_URL = "https://hl-steel-industries-sdn-bhd.github.io/Test/";
+    const html5QrCode = new Html5Qrcode("reader");
+    const input = document.getElementById("scannerInput");
     const warning = document.getElementById("warningMsg");
 
-    const html5QrCode = new Html5Qrcode("reader");
-    let scanningLocked = false; // 一旦为 true，就忽略所有后续解码，避免 race / 重复触发
-
-    // 统一处理扫码结果
-    async function handleScan(rawText, fromCamera = false) {
-      if (!rawText) return;
-      const text = String(rawText).trim();
-
-      // 如果已经上锁，直接忽略
-      if (scanningLocked) return;
-
-      // 如果是被阻止的 URL —— 永远不跳转，只提示并停止相机
-      if (text === BLOCKED_URL) {
-        scanningLocked = true;
+    function handleScan(text, fromCamera = false) {
+      // 如果扫描到的 URL 等于当前页面本身 → 阻止跳转
+      const currentUrl = window.location.href.split("#")[0]; 
+      if (text === currentUrl) {
         warning.style.display = "block";
-
-        // 尝试优雅停止并清除相机（防止后续帧继续触发）
-        try {
-          await html5QrCode.stop();
-        } catch (e) {
-          // stop 可能会拒绝或抛错误，尝试 clear
-        }
-        try { html5QrCode.clear(); } catch (e) {}
         return;
       }
 
-      // 普通 URL：跳转（相机场景先停止再跳）
+      // 否则是正常的外部 URL，跳转
       if (text.startsWith("http://") || text.startsWith("https://")) {
-        scanningLocked = true; // 上锁，保证只触发一次跳转
         if (fromCamera) {
-          try {
-            await html5QrCode.stop();
-          } catch (e) {
-            // ignore
-          }
-          try { html5QrCode.clear(); } catch (e) {}
-          // 最后再跳
-          window.location.href = text;
+          html5QrCode.stop().then(() => {
+            window.location.href = text;
+          });
         } else {
-          // 扫码枪直接跳
           window.location.href = text;
         }
-        return;
+      } else {
+        alert("无效的 QR 内容: " + text);
       }
-
-      // 非 URL 内容
-      alert("无效的 QR 内容: " + text);
     }
 
-    // 启动摄像头扫码
+    // 手机摄像头扫码
     function startScanning() {
-      // 如果前面已经上锁（例如页面刚加载时因为某些行为），不再启动
-      if (scanningLocked) return;
-
       html5QrCode.start(
         { facingMode: "environment" },
         {
           fps: 10,
           qrbox: function(viewfinderWidth, viewfinderHeight) {
             let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: Math.floor(minEdge * 0.8), height: Math.floor(minEdge * 0.8) };
+            return { width: minEdge * 0.8, height: minEdge * 0.8 };
           }
         },
         (decodedText) => handleScan(decodedText, true),
-        (error) => { /* ignore decode failures */ }
+        () => {}
       ).catch(err => {
         console.error("扫描启动失败:", err);
       });
@@ -127,20 +98,15 @@
     startScanning();
 
     // 电脑扫码枪逻辑（输入框监听回车）
-    const input = document.getElementById("scannerInput");
     input.focus();
-
-    // 失焦自动回聚焦（保持扫码枪输入时不需要点）
     input.addEventListener("blur", () => {
       setTimeout(() => input.focus(), 100);
     });
-
-    // 回车后处理
     input.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         const text = input.value.trim();
-        input.value = ""; // 立即清空，避免重复触发
         handleScan(text, false);
+        input.value = ""; // 清空，方便下一次扫
       }
     });
   </script>

@@ -49,11 +49,11 @@
 
   <!-- 给电脑扫码枪用的输入框 -->
   <input type="text" id="scannerInput" placeholder="请扫描图纸上的 QR Code" autofocus>
-  <div id="warningMsg">Bro,冷静! 不要一直重复扫描自己的QRCode。</div>
+  <div id="warningMsg">Bro,冷静! 不要一直重复扫描自己的QR Code。</div>
 
   <script>
     const SPECIAL_URL = "https://hl-steel-industries-sdn-bhd.github.io/Test/";
-    let lastTestScanTime = 0; // 记录上一次扫 Test 的时间戳
+    let lastTestScanTime = 0; // 上一次扫 Test 的时间戳
     const warning = document.getElementById("warningMsg");
 
     const html5QrCode = new Html5Qrcode("reader");
@@ -63,7 +63,7 @@
       const now = Date.now();
 
       if (text === SPECIAL_URL) {
-        if (now - lastTestScanTime > 3000) {
+        if (now - lastTestScanTime > 30000) {  // 30秒冷却
           warning.style.display = "block";
           lastTestScanTime = now;
         }
@@ -123,6 +123,7 @@
   </script>
 </body>
 </html>
+
 
 
 

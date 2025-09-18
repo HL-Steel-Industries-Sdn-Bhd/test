@@ -39,8 +39,8 @@
       margin-top: 10px;
       font-size: 14px;
       color: #5dade2;
-      opacity: 0;                /* 初始透明 */
-      transition: opacity 1s;    /* 渐变过渡 */
+      opacity: 0;                
+      transition: opacity 0.5s;  
     }
     #countBox {
       margin-top: 20px;
@@ -108,7 +108,10 @@
     // 解析并显示扫描结果
     function displayResult(url) {
       if (scannedLinks.has(url)) {
-        alert("已经扫描过这个图纸了！");
+        // 显示提示文字（渐入）
+        warning.textContent = "已扫描过该图纸";
+        warning.style.opacity = "1";
+        setTimeout(() => { warning.style.opacity = "0"; }, 2000);
         return;
       }
 
@@ -117,6 +120,7 @@
         let soParam = u.searchParams.get("so");
         if (soParam) {
           let parts = soParam.split("+");
+          console.log("parts:", parts); // 调试用
           let salesOrder = parts[0] || "";
           let item = parts[1] || "";
           let row = document.createElement("tr");
@@ -138,13 +142,9 @@
       const currentUrl = window.location.href.split("#")[0];
       if (text === currentUrl) {
         // 显示提示文字（渐入）
+        warning.textContent = "请勿扫描当前页面 URL";
         warning.style.opacity = "1";
-
-        // 3秒后自动淡出
-        setTimeout(() => {
-          warning.style.opacity = "0";
-        }, 3000);
-
+        setTimeout(() => { warning.style.opacity = "0"; }, 2000);
         return;
       }
       if (text.startsWith("http://") || text.startsWith("https://")) {
@@ -188,6 +188,7 @@
   </script>
 </body>
 </html>
+
 
 
 

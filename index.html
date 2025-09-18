@@ -115,7 +115,7 @@
         let u = new URL(url);
         let soParam = u.searchParams.get("so");
         if (soParam) {
-          let parts = soParam.split(" "); // 用空格分隔 SO 和 Item
+          let parts = soParam.split(" "); // 空格分隔 SO 和 Item
           let salesOrder = parts[0] || "";
           let item = parts[1] || "";
           let row = document.createElement("tr");
@@ -151,12 +151,14 @@
       html5QrCode.start(
         { 
           facingMode: "environment",
-          // ✅ 增加分辨率，让小二维码也能被识别
-          videoConstraints: { width: {ideal: 1280}, height: {ideal: 720} } 
+          videoConstraints: { width: {ideal:1280}, height: {ideal:720} } // 高分辨率
         },
         {
-          fps: 25, // ✅ 提高帧率
-          qrbox: false // ✅ 扫描整个画面，不局限中心小框
+          fps: 25, // 高帧率
+          qrbox: function(viewfinderWidth, viewfinderHeight) {
+            let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            return { width: minEdge * 0.9, height: minEdge * 0.9 }; // 大扫描框，保持可视化
+          }
         },
         (decodedText) => handleScan(decodedText),
         () => {}
@@ -179,6 +181,7 @@
   </script>
 </body>
 </html>
+
 
 
 

@@ -18,10 +18,6 @@
       font-size: 5vw;
       margin: 2vh 0;
     }
-    p {
-      font-size: 4vw;
-      margin: 1vh 0 3vh;
-    }
     #reader {
       margin: 0 auto;
       width: 90vw;
@@ -39,19 +35,42 @@
       max-width: 400px;
       text-align: center;
     }
+    #warningMsg {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #5dade2; /* 低亮水蓝色 */
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h2>Welcome Angelina (A0001)</h2>
-  <p>请扫描图纸上的 QR Code</p>
   <div id="reader"></div>
 
   <!-- 给电脑扫码枪用的输入框 -->
-  <input type="text" id="scannerInput" placeholder="请用扫码枪扫描这里" autofocus>
+  <input type="text" id="scannerInput" placeholder="请扫描图纸上的 QR Code" autofocus>
+  <div id="warningMsg">Bro,冷静! 不要一直重复扫描自己的QR Code。</div>
 
   <script>
+    const SPECIAL_URL = "https://hl-steel-industries-sdn-bhd.github.io/Test/";
+    let lastScanned = "";
+
     // 手机摄像头扫码
     const html5QrCode = new Html5Qrcode("reader");
+
+    function handleScan(text) {
+      if (text === SPECIAL_URL && lastScanned === SPECIAL_URL) {
+        document.getElementById("warningMsg").style.display = "block";
+        return;
+      }
+      lastScanned = text;
+
+      if (text.startsWith("http://") || text.startsWith("https://")) {
+        window.location.href = text;
+      } else {
+        alert("无效的 QR 内容: " + text);
+      }
+    }
 
     function startScanning() {
       html5QrCode.start(
@@ -63,12 +82,7 @@
             return { width: minEdge * 0.8, height: minEdge * 0.8 };
           }
         },
-        (decodedText) => {
-          console.log("扫描结果:", decodedText);
-          if (decodedText.startsWith("http://") || decodedText.startsWith("https://")) {
-            window.location.href = decodedText;
-          }
-        },
+        (decodedText) => handleScan(decodedText),
         () => {}
       ).catch(err => {
         console.error("扫描启动失败:", err);
@@ -78,8 +92,6 @@
 
     // 电脑扫码枪逻辑（输入框监听回车）
     const input = document.getElementById("scannerInput");
-
-    // 页面打开时自动聚焦
     input.focus();
 
     // 如果失去焦点，自动再聚焦
@@ -87,21 +99,17 @@
       setTimeout(() => input.focus(), 100);
     });
 
-    // 监听回车键
     input.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         const text = input.value.trim();
-        if (text.startsWith("http://") || text.startsWith("https://")) {
-          window.location.href = text;
-        } else {
-          alert("无效的 QR 内容: " + text);
-        }
+        handleScan(text);
         input.value = ""; // 清空，方便下一次扫
       }
     });
   </script>
 </body>
 </html>
+
 
 
 

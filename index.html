@@ -1,13 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <title>工人扫码 - Angelina</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    h2 { color: #2c3e50; }
-    #reader { margin: 20px auto; width: 300px; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 5vw; /* 用相对单位适配不同屏幕 */
+      margin: 0;
+      background: #f9f9f9;
+    }
+    h2 {
+      color: #2c3e50;
+      font-size: 5vw; /* 标题随屏幕缩放 */
+      margin: 2vh 0;
+    }
+    p {
+      font-size: 4vw;
+      margin: 1vh 0 3vh;
+    }
+    #reader {
+      margin: 0 auto;
+      width: 90vw;       /* 宽度占屏幕90% */
+      max-width: 400px;  /* 最大不超过400px */
+      aspect-ratio: 1;   /* 保持正方形 */
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -21,8 +44,14 @@
     function startScanning() {
       html5QrCode.start(
         { facingMode: "environment" }, // 使用后置摄像头
-        { fps: 10, qrbox: 250 },
-        (decodedText, decodedResult) => {
+        {
+          fps: 10,
+          qrbox: function(viewfinderWidth, viewfinderHeight) {
+            let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            return { width: minEdge * 0.8, height: minEdge * 0.8 }; // 根据屏幕大小自适应
+          }
+        },
+        (decodedText) => {
           console.log("扫描结果:", decodedText);
 
           // 扫到 URL 自动跳转
@@ -33,7 +62,7 @@
           }
         },
         (errorMessage) => {
-          // 可以忽略扫描失败
+          // 忽略未识别的情况
         }
       ).catch(err => {
         console.error("扫描启动失败:", err);
@@ -44,5 +73,6 @@
   </script>
 </body>
 </html>
+
 
 

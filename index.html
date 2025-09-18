@@ -39,8 +39,8 @@
       margin-top: 10px;
       font-size: 14px;
       color: #5dade2;
-      opacity: 0;                
-      transition: opacity 0.5s;  
+      opacity: 0;
+      transition: opacity 0.5s;
     }
     #countBox {
       margin-top: 20px;
@@ -70,10 +70,12 @@
 </head>
 <body>
   <h2>Welcome Angelina (A0001)</h2>
+
   <div id="reader"></div>
 
   <!-- 给电脑扫码枪用的输入框 -->
   <input type="text" id="scannerInput" placeholder="请扫描图纸上的 QR Code" autofocus>
+
   <div id="warningMsg">Bro,冷静! 这个你Scan过了</div>
 
   <!-- 已扫描数量 -->
@@ -96,7 +98,6 @@
     const warning = document.getElementById("warningMsg");
     const resultTable = document.getElementById("resultTable").querySelector("tbody");
     const countBox = document.getElementById("countBox");
-
     const scannedLinks = new Set();
 
     function updateCount() {
@@ -110,18 +111,16 @@
         setTimeout(() => { warning.style.opacity = "0"; }, 2000);
         return;
       }
-
       try {
         let u = new URL(url);
         let soParam = u.searchParams.get("so");
         if (soParam) {
-          let parts = soParam.split(" "); // 空格分隔 SO 和 Item
+          let parts = soParam.split(" ");
           let salesOrder = parts[0] || "";
           let item = parts[1] || "";
           let row = document.createElement("tr");
           row.innerHTML = `<td>${salesOrder}</td><td>${item}</td>`;
           resultTable.appendChild(row);
-
           scannedLinks.add(url);
           updateCount();
         } else {
@@ -149,15 +148,10 @@
 
     function startScanning() {
       html5QrCode.start(
-        { 
-          facingMode: "environment",
-          videoConstraints: { width: {ideal:1280}, height: {ideal:720} } // 高分辨率
-        },
-        {
-          fps: 25, // 高帧率
-          qrbox: function(viewfinderWidth, viewfinderHeight) {
+        { facingMode: "environment" },
+        { fps: 20, qrbox: function(viewfinderWidth, viewfinderHeight) {
             let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: minEdge * 0.6, height: minEdge * 0.6 }; // 保留可视化扫描框
+            return { width: minEdge * 0.8, height: minEdge * 0.8 };
           }
         },
         (decodedText) => handleScan(decodedText),
@@ -170,7 +164,10 @@
     startScanning();
 
     input.focus();
-    input.addEventListener("blur", () => { setTimeout(() => input.focus(), 100); });
+    input.addEventListener("blur", () => {
+      setTimeout(() => input.focus(), 100);
+    });
+
     input.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         const text = input.value.trim();

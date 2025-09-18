@@ -18,23 +18,45 @@
       font-size: 5vw;
       margin: 2vh 0;
     }
+
+    /* reader 宽度和最大宽度保持原样，但高度缩短 1/5（即乘 0.8）*/
     #reader {
       margin: 0 auto;
       width: 90vw;
       max-width: 400px;
-      aspect-ratio: 1;
+      /* 这里用 calc(min(90vw,400px) * 0.8) 确保在窄屏和桌面 max-width 下都正确计算 */
+      height: calc(min(90vw, 400px) * 0.8);
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      height: 320px; /* 原来自动 aspect-ratio → 固定高度，缩短 1/5 */
+      position: relative; /* 用于放 overlay focus 框 */
+      overflow: hidden;
     }
+
+    /* 中间的 focus 框：基于 reader 的宽度（80%），所以它不会随 reader 高度改变而缩小
+       （这保证 focus 框保持和你之前看到的一样大小）*/
+    #reader::after{
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;              /* 与 qrbox 的 width 保持一致 */
+      height: 80%;             /* 与 qrbox 的 height 保持一致（方形）*/
+      border: 2px dashed rgba(44,62,80,0.18);
+      border-radius: 6px;
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
     input#scannerInput {
-      margin-top: 20px;
+      margin-top: 14px;
       font-size: 18px;
       padding: 10px;
       width: 80%;
       max-width: 400px;
       text-align: center;
+      box-sizing: border-box;
     }
     #warningMsg {
       margin-top: 10px;
@@ -43,33 +65,41 @@
       display: none;
     }
     #countBox {
-      margin-top: 20px;
+      margin-top: 14px;
       font-size: 16px;
       font-weight: bold;
       color: #16a085;
     }
     table {
-      margin: 10px auto;
+      margin: 10px auto 40px;
       border-collapse: collapse;
       width: 90%;
       max-width: 500px;
       background: #fff;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #eee;
       padding: 10px;
       font-size: 16px;
     }
     th {
-      background: #f1f1f1;
+      background: #f8f8f8;
+      text-align: left;
+    }
+
+    /* 在小屏上稍微收紧表格字体 */
+    @media (max-width: 360px){
+      th, td { padding: 8px; font-size: 14px; }
     }
   </style>
 </head>
 <body>
   <h2>Welcome Angelina (A0001)</h2>
+
+  <!-- camera preview container -->
   <div id="reader"></div>
 
   <!-- 给电脑扫码枪用的输入框 -->
@@ -80,7 +110,7 @@
   <div id="countBox">已扫描 0 张图纸</div>
 
   <!-- 扫描结果表格 -->
-  <table id="resultTable">
+  <table id="resultTable" aria-live="polite">
     <thead>
       <tr>
         <th>Sales Order No.</th>
@@ -94,97 +124,153 @@
     const html5QrCode = new Html5Qrcode("reader");
     const input = document.getElementById("scannerInput");
     const warning = document.getElementById("warningMsg");
-    const resultTable = document.getElementById("resultTable").querySelector("tbody");
+    const resultTableBody = document.getElementById("resultTable").querySelector("tbody");
     const countBox = document.getElementById("countBox");
 
-    // 用 Set 来存储已扫描过的图纸链接（避免重复）
-    const scannedLinks = new Set();
+    // 用 Set 存储已扫描的 key（以 so 参数为主键，若无 so 则用完整 URL）
+    const scannedKeys = new Set();
 
-    // 更新统计数量
-    function updateCount() {
-      countBox.textContent = "已扫描 " + scannedLinks.size + " 张图纸";
+    function updateCount(){
+      countBox.textContent = "已扫描 " + scannedKeys.size + " 张图纸";
     }
 
-    // 解析并显示扫描结果
-    function displayResult(url) {
-      if (scannedLinks.has(url)) {
+    // 规范化 soParam：把 + 或 多个空格 处理为单个空格，trim
+    function normalizeSoParam(s) {
+      if (!s) return "";
+      return String(s).replace(/\+/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    // 从 url 提取 so 参数并分成 salesOrder / itemNo
+    function parseSo(url){
+      try {
+        const u = new URL(url);
+        let soRaw = u.searchParams.get("so") || "";
+        soRaw = normalizeSoParam(soRaw);
+
+        if (!soRaw) return null;
+        // 分隔：优先按 + 分隔（如果存在），否则按空格分隔
+        let parts = soRaw.split(/\+|\s+/);
+        const salesOrder = parts[0] || "";
+        const itemRaw = parts.slice(1).join(" ") || "";
+        // 把 Item1 → Item 1（也兼容 Item01, item2 等）
+        const item = itemRaw.replace(/Item\s*0*(\d+)/i, "Item $1").trim();
+
+        return { salesOrder, item, key: soRaw };
+      } catch(e) {
+        return null;
+      }
+    }
+
+    // 显示一行结果（并把 key 先加入集合以防 race）
+    function addResultRow(url) {
+      const parsed = parseSo(url);
+      const key = parsed ? parsed.key : url;
+
+      if (scannedKeys.has(key)) {
         alert("已经扫描过这个图纸了！");
         return;
       }
 
-      try {
-        let u = new URL(url);
-        let soParam = u.searchParams.get("so");
-        if (soParam) {
-          let parts = soParam.split("+");
-          let salesOrder = parts[0] || "";
-          let item = parts[1] || "";
+      // 先立刻加入集合，防止短时间内的重复回调写入多次
+      scannedKeys.add(key);
 
-          // 把 Item1 → Item 1
-          item = item.replace(/Item(\d+)/i, "Item $1");
-
-          let row = document.createElement("tr");
-          row.innerHTML = `<td>${salesOrder}</td><td>${item}</td>`;
-          resultTable.appendChild(row);
-
-          scannedLinks.add(url); // 标记为已扫描
-          updateCount();
-        } else {
-          alert("无法解析链接: " + url);
-        }
-      } catch (e) {
-        alert("无效的链接: " + url);
+      // 如果解析不到 so，回退显示整个 url（但仍去重）
+      let salesOrder = "", item = "";
+      if (parsed) {
+        salesOrder = parsed.salesOrder;
+        item = parsed.item;
+      } else {
+        // fallback：整行当做 salesOrder
+        salesOrder = url;
+        item = "";
       }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${escapeHtml(salesOrder)}</td><td>${escapeHtml(item)}</td>`;
+      resultTableBody.appendChild(tr);
+      updateCount();
     }
 
-    // 处理扫码结果
-    function handleScan(text) {
+    // 小工具：防止 XSS（简单转义）
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, function(m){
+        return ({
+          "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+        })[m];
+      });
+    }
+
+    // 处理扫码结果（来自相机或输入框）
+    function handleScan(text, fromCamera = true) {
+      if (!text) return;
+      const trimmed = String(text).trim();
       const currentUrl = window.location.href.split("#")[0];
-      if (text === currentUrl) {
-        warning.style.display = "block";
+
+      // 如果扫到当前页面（相同 URL） —— 不跳转，提示并返回
+      // 比较时也要把可能出现的末尾斜杠影响考虑进来：用 normalizeUrl（基于 URL 对象的 origin+pathname）
+      try {
+        const normA = (new URL(trimmed, window.location.href)).origin + (new URL(trimmed, window.location.href)).pathname.replace(/\/+$/, "");
+        const normB = window.location.origin + window.location.pathname.replace(/\/+$/, "");
+        if (normA === normB) {
+          warning.style.display = "block";
+          return;
+        }
+      } catch(e) {
+        // 若不是合法 URL，则继续下面的判断（会被当成无效）
+      }
+
+      // 只处理 http(s) 链接
+      if (/^https?:\/\//i.test(trimmed)) {
+        // 不跳转 — 只把 info 抽出并显示表格
+        addResultRow(trimmed);
         return;
       }
-      if (text.startsWith("http://") || text.startsWith("https://")) {
-        displayResult(text);
-      } else {
-        alert("无效的 QR 内容: " + text);
-      }
+
+      alert("无效的 QR 内容: " + trimmed);
     }
 
-    // 手机摄像头扫码
-    function startScanning() {
+    // 启动摄像头扫码（连续扫描，多张都会处理）
+    function startScanning(){
       html5QrCode.start(
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: function(viewfinderWidth, viewfinderHeight) {
-            let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: minEdge * 0.8, height: minEdge * 0.6 }; // 保持中间 focus 框，但整体缩短
+          /* 固定 qrbox 大小基于 viewfinder 的宽度（保持和之前的 focus 框一致）
+             这里使用 viewfinderWidth * 0.8，使得 CSS overlay width:80% 与 qrbox 一致 */
+          qrbox: function(viewfinderWidth, viewfinderHeight){
+            const boxSize = Math.floor(viewfinderWidth * 0.8);
+            return { width: boxSize, height: boxSize };
           }
         },
-        (decodedText) => handleScan(decodedText),
-        () => {}
+        (decodedText) => {
+          // 解析并展示（不跳转），持续监听，因此可连扫多张
+          handleScan(decodedText, true);
+        },
+        (errorMessage) => {
+          // ignore decode failures
+        }
       ).catch(err => {
         console.error("扫描启动失败:", err);
       });
     }
+
+    // 启动
     startScanning();
 
-    // 电脑扫码枪逻辑
+    // 电脑扫码枪逻辑（回车）
     input.focus();
-    input.addEventListener("blur", () => {
-      setTimeout(() => input.focus(), 100);
-    });
-    input.addEventListener("keypress", function(e) {
+    input.addEventListener("blur", () => { setTimeout(() => input.focus(), 100); });
+    input.addEventListener("keypress", function(e){
       if (e.key === "Enter") {
-        const text = input.value.trim();
-        handleScan(text);
+        const txt = input.value.trim();
         input.value = "";
+        handleScan(txt, false);
       }
     });
   </script>
 </body>
 </html>
+
 
 
 

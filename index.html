@@ -39,7 +39,8 @@
       margin-top: 10px;
       font-size: 14px;
       color: #5dade2;
-      display: none;
+      opacity: 0;                /* 初始透明 */
+      transition: opacity 1s;    /* 渐变过渡 */
     }
     #countBox {
       margin-top: 20px;
@@ -136,7 +137,14 @@
     function handleScan(text) {
       const currentUrl = window.location.href.split("#")[0];
       if (text === currentUrl) {
-        warning.style.display = "block";
+        // 显示提示文字（渐入）
+        warning.style.opacity = "1";
+
+        // 3秒后自动淡出
+        setTimeout(() => {
+          warning.style.opacity = "0";
+        }, 3000);
+
         return;
       }
       if (text.startsWith("http://") || text.startsWith("https://")) {
@@ -180,6 +188,7 @@
   </script>
 </body>
 </html>
+
 
 
 

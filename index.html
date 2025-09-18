@@ -137,7 +137,7 @@
     function handleScan(text) {
       const currentUrl = window.location.href.split("#")[0];
       if (text === currentUrl) {
-        warning.textContent = "请勿扫描当前页面 URL";
+        warning.textContent = "Bro,冷静! 不要一直重复扫描自己的QR Code";
         warning.style.opacity = "1";
         setTimeout(() => { warning.style.opacity = "0"; }, 2000);
         return;

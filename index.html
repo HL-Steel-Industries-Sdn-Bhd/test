@@ -9,13 +9,13 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 5vw; /* 用相对单位适配不同屏幕 */
+      padding: 5vw;
       margin: 0;
       background: #f9f9f9;
     }
     h2 {
       color: #2c3e50;
-      font-size: 5vw; /* 标题随屏幕缩放 */
+      font-size: 5vw;
       margin: 2vh 0;
     }
     p {
@@ -24,12 +24,20 @@
     }
     #reader {
       margin: 0 auto;
-      width: 90vw;       /* 宽度占屏幕90% */
-      max-width: 400px;  /* 最大不超过400px */
-      aspect-ratio: 1;   /* 保持正方形 */
+      width: 90vw;
+      max-width: 400px;
+      aspect-ratio: 1;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    input#scannerInput {
+      margin-top: 20px;
+      font-size: 18px;
+      padding: 10px;
+      width: 80%;
+      max-width: 400px;
+      text-align: center;
     }
   </style>
 </head>
@@ -38,38 +46,59 @@
   <p>请扫描图纸上的 QR Code</p>
   <div id="reader"></div>
 
+  <!-- 给电脑扫码枪用的输入框 -->
+  <input type="text" id="scannerInput" placeholder="请用扫码枪扫描这里" autofocus>
+
   <script>
+    // 手机摄像头扫码
     const html5QrCode = new Html5Qrcode("reader");
 
     function startScanning() {
       html5QrCode.start(
-        { facingMode: "environment" }, // 使用后置摄像头
+        { facingMode: "environment" },
         {
           fps: 10,
           qrbox: function(viewfinderWidth, viewfinderHeight) {
             let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: minEdge * 0.8, height: minEdge * 0.8 }; // 根据屏幕大小自适应
+            return { width: minEdge * 0.8, height: minEdge * 0.8 };
           }
         },
         (decodedText) => {
           console.log("扫描结果:", decodedText);
-
-          // 扫到 URL 自动跳转
           if (decodedText.startsWith("http://") || decodedText.startsWith("https://")) {
-            html5QrCode.stop().then(() => {
-              window.location.href = decodedText;
-            });
+            window.location.href = decodedText;
           }
         },
-        (errorMessage) => {
-          // 忽略未识别的情况
-        }
+        () => {}
       ).catch(err => {
         console.error("扫描启动失败:", err);
       });
     }
-
     startScanning();
+
+    // 电脑扫码枪逻辑（输入框监听回车）
+    const input = document.getElementById("scannerInput");
+
+    // 页面打开时自动聚焦
+    input.focus();
+
+    // 如果失去焦点，自动再聚焦
+    input.addEventListener("blur", () => {
+      setTimeout(() => input.focus(), 100);
+    });
+
+    // 监听回车键
+    input.addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        const text = input.value.trim();
+        if (text.startsWith("http://") || text.startsWith("https://")) {
+          window.location.href = text;
+        } else {
+          alert("无效的 QR 内容: " + text);
+        }
+        input.value = ""; // 清空，方便下一次扫
+      }
+    });
   </script>
 </body>
 </html>

@@ -97,18 +97,14 @@
     const resultTable = document.getElementById("resultTable").querySelector("tbody");
     const countBox = document.getElementById("countBox");
 
-    // 用 Set 来存储已扫描过的图纸链接（避免重复）
     const scannedLinks = new Set();
 
-    // 更新统计数量
     function updateCount() {
       countBox.textContent = "已扫描 " + scannedLinks.size + " 张图纸";
     }
 
-    // 解析并显示扫描结果
     function displayResult(url) {
       if (scannedLinks.has(url)) {
-        // 显示提示文字（渐入）
         warning.textContent = "已扫描过该图纸";
         warning.style.opacity = "1";
         setTimeout(() => { warning.style.opacity = "0"; }, 2000);
@@ -119,7 +115,8 @@
         let u = new URL(url);
         let soParam = u.searchParams.get("so");
         if (soParam) {
-          let parts = soParam.split("+");
+          // ✅ 用空格分隔 SO 和 Item
+          let parts = soParam.split(" ");
           console.log("parts:", parts); // 调试用
           let salesOrder = parts[0] || "";
           let item = parts[1] || "";
@@ -127,7 +124,7 @@
           row.innerHTML = `<td>${salesOrder}</td><td>${item}</td>`;
           resultTable.appendChild(row);
 
-          scannedLinks.add(url); // 标记为已扫描
+          scannedLinks.add(url);
           updateCount();
         } else {
           alert("无法解析链接: " + url);
@@ -137,11 +134,9 @@
       }
     }
 
-    // 处理扫码结果
     function handleScan(text) {
       const currentUrl = window.location.href.split("#")[0];
       if (text === currentUrl) {
-        // 显示提示文字（渐入）
         warning.textContent = "请勿扫描当前页面 URL";
         warning.style.opacity = "1";
         setTimeout(() => { warning.style.opacity = "0"; }, 2000);
@@ -154,7 +149,6 @@
       }
     }
 
-    // 手机摄像头扫码
     function startScanning() {
       html5QrCode.start(
         { facingMode: "environment" },
@@ -173,7 +167,6 @@
     }
     startScanning();
 
-    // 电脑扫码枪逻辑
     input.focus();
     input.addEventListener("blur", () => {
       setTimeout(() => input.focus(), 100);
@@ -188,6 +181,7 @@
   </script>
 </body>
 </html>
+
 
 
 

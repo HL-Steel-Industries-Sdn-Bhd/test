@@ -115,9 +115,7 @@
         let u = new URL(url);
         let soParam = u.searchParams.get("so");
         if (soParam) {
-          // ✅ 用空格分隔 SO 和 Item
-          let parts = soParam.split(" ");
-          console.log("parts:", parts); // 调试用
+          let parts = soParam.split(" "); // 用空格分隔 SO 和 Item
           let salesOrder = parts[0] || "";
           let item = parts[1] || "";
           let row = document.createElement("tr");
@@ -151,13 +149,14 @@
 
     function startScanning() {
       html5QrCode.start(
-        { facingMode: "environment" },
+        { 
+          facingMode: "environment",
+          // ✅ 增加分辨率，让小二维码也能被识别
+          videoConstraints: { width: {ideal: 1280}, height: {ideal: 720} } 
+        },
         {
-          fps: 20,
-          qrbox: function(viewfinderWidth, viewfinderHeight) {
-            let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return { width: minEdge * 0.8, height: minEdge * 0.8 };
-          }
+          fps: 25, // ✅ 提高帧率
+          qrbox: false // ✅ 扫描整个画面，不局限中心小框
         },
         (decodedText) => handleScan(decodedText),
         () => {}
@@ -165,12 +164,11 @@
         console.error("扫描启动失败:", err);
       });
     }
+
     startScanning();
 
     input.focus();
-    input.addEventListener("blur", () => {
-      setTimeout(() => input.focus(), 100);
-    });
+    input.addEventListener("blur", () => { setTimeout(() => input.focus(), 100); });
     input.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         const text = input.value.trim();
@@ -181,6 +179,7 @@
   </script>
 </body>
 </html>
+
 
 
 
